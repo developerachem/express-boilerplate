@@ -3,6 +3,7 @@ import { Request, Response } from "express";
 import expressAsyncHandler from "express-async-handler";
 import jwt from "jsonwebtoken";
 import { User } from "../model/users";
+import { sendMail } from "../utils/mailSend";
 
 // * Controller for logging in a user
 export const loginUser = expressAsyncHandler(
@@ -187,9 +188,83 @@ export const changePassword = expressAsyncHandler(
       user.password = hashedPassword;
       await user.save();
 
+      // * Send Mail After Change Password
+      const mailPayload = {
+        to: user.email,
+        subject: "Password Changed Successfully",
+        message: "Your password has been changed successfully.",
+      };
+      sendMail(mailPayload);
+
       // * Password changed successfully
       res.status(200).json({
         message: "Password changed successfully",
+        success: true,
+        status: 200,
+        url: req.originalUrl,
+      });
+    } catch (err) {
+      res.status(500).json({
+        message: "Internal Server Error",
+        success: false,
+        status: 500,
+        error: err,
+        url: req.originalUrl,
+      });
+    }
+  }
+);
+
+// * Forgot Password
+export const forgotPassword = expressAsyncHandler(
+  async (req: Request, res: Response) => {
+    try {
+      if (!req.body.email) {
+        res.status(400).json({
+          message: "Email is required",
+          success: false,
+          status: 400,
+          url: req.originalUrl,
+        });
+        return;
+      }
+
+      // * Check User Exist or not
+      const userExists = await User.findOne({ email: req.body.email });
+
+      // * Response if user not exists
+      if (!userExists) {
+        res.status(404).json({
+          message: "User not found",
+          success: false,
+          status: 404,
+          url: req.originalUrl,
+        });
+        return;
+      }
+
+      // * Generate Reset Token
+      const resetToken = jwt.sign(
+        { id: userExists._id },
+        process.env.RESET_TOKEN_SECRET as string,
+        { expiresIn: "15m" }
+      );
+
+      // * Update Reset Token in User Document
+      //   userExists.resetToken = resetToken;
+      //   await userExists.save();
+
+      // * Send Mail After Forgot Password
+      const mailPayload = {
+        to: userExists.email,
+        subject: "Reset Password",
+        message: `To reset your password, please visit this link: http://${req.headers.host}/reset-password/${resetToken}`,
+      };
+      sendMail(mailPayload);
+
+      // * Password forgotten successfully
+      res.status(200).json({
+        message: "Password forgotten successfully",
         success: true,
         status: 200,
         url: req.originalUrl,

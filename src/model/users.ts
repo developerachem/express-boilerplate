@@ -1,6 +1,6 @@
 import { model, Schema } from "mongoose";
 
-interface UserType {
+export interface UserType {
   name: string;
   email: string;
   password: string;

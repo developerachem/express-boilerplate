@@ -2,7 +2,7 @@ import bcrypt from "bcrypt";
 import { Request, Response } from "express";
 import expressAsyncHandler from "express-async-handler";
 import jwt from "jsonwebtoken";
-import { User } from "../model/users";
+import { User, UserType } from "../model/users";
 import { sendMail } from "../utils/mailSend";
 
 // * Controller for logging in a user
@@ -65,7 +65,7 @@ export const loginUser = expressAsyncHandler(
 
       // * Login Response
       res.status(200).json({
-        message: "Logged successfully",
+        message: "Login successfully",
         success: true,
         status: 200,
         user: userExists,
@@ -243,28 +243,28 @@ export const forgotPassword = expressAsyncHandler(
         return;
       }
 
+      // * Generate 4 Digit OTP For the verification
+      const randomOtp = Math.floor(100000 + Math.random() * 900000);
+
       // * Generate Reset Token
       const resetToken = jwt.sign(
-        { id: userExists._id },
+        { email: userExists.email, otp: randomOtp },
         process.env.RESET_TOKEN_SECRET as string,
-        { expiresIn: "15m" }
+        { expiresIn: "50m" }
       );
-
-      // * Update Reset Token in User Document
-      //   userExists.resetToken = resetToken;
-      //   await userExists.save();
 
       // * Send Mail After Forgot Password
       const mailPayload = {
         to: userExists.email,
         subject: "Reset Password",
-        message: `To reset your password, please visit this link: http://${req.headers.host}/reset-password/${resetToken}`,
+        message: `To reset your password, please <a href="http://${req.headers.host}/reset-password/${resetToken}">Click</a> <br /> Your OTP is: <b>${randomOtp}</b> <br /> OTP Validity Only 5 Minutes`,
       };
       sendMail(mailPayload);
 
       // * Password forgotten successfully
       res.status(200).json({
         message: "Password forgotten successfully",
+        // OTP: randomOtp,
         success: true,
         status: 200,
         url: req.originalUrl,
@@ -275,6 +275,115 @@ export const forgotPassword = expressAsyncHandler(
         success: false,
         status: 500,
         error: err,
+        url: req.originalUrl,
+      });
+    }
+  }
+);
+
+interface DecodeType {
+  email: string;
+  otp: number;
+}
+// * Reset Password
+export const resetPassword = expressAsyncHandler(
+  async (req: Request, res: Response) => {
+    try {
+      const resetToken = req.params.token;
+
+      if (!req.body.password) {
+        res.status(400).json({
+          message: "Password is required",
+          success: false,
+          status: 400,
+          url: req.originalUrl,
+        });
+        return;
+      }
+
+      if (!req.body.otp) {
+        res.status(400).json({
+          message: "OTP is required",
+          success: false,
+          status: 400,
+          url: req.originalUrl,
+        });
+        return;
+      }
+
+      // * Verify Token
+      const decoded = jwt.verify(
+        resetToken,
+        process.env.RESET_TOKEN_SECRET as string
+      );
+
+      const { email, otp }: DecodeType | any = decoded;
+
+      // * Check if token is expired
+      if (!decoded) {
+        res.status(400).json({
+          message: "Token Expired",
+          success: false,
+          status: 400,
+          url: req.originalUrl,
+        });
+        return;
+      }
+
+      // * Match OTP
+      if (otp !== parseInt(req.body.otp)) {
+        res.status(400).json({
+          message: "Invalid OTP",
+          success: false,
+          status: 400,
+          url: req.originalUrl,
+        });
+        return;
+      }
+
+      // * Check if email matches with the token
+      if (email !== req.body.email) {
+        res.status(400).json({
+          message: "Invalid Email Address",
+          success: false,
+          status: 400,
+          url: req.originalUrl,
+        });
+        return;
+      }
+
+      // * Hash New Password
+      const hashedPassword = await bcrypt.hash(req.body.password, 10);
+
+      // * Update Password
+      const user: UserType | any = await User.findOneAndUpdate(
+        { email: req.body.email },
+        { password: hashedPassword },
+        { new: true }
+      );
+
+      // * Send Mail After Reset Password
+      const mailPayload = {
+        to: user.email,
+        subject: "Password Reset Successfully",
+        message: "Your password has been reset successfully.",
+      };
+      sendMail(mailPayload);
+
+      // * Password reset successfully
+      res.status(200).json({
+        message: "Password reset successfully",
+        success: true,
+        user,
+        status: 200,
+        url: req.originalUrl,
+      });
+    } catch (error) {
+      res.status(500).json({
+        message: "Internal Server Error",
+        success: false,
+        status: 500,
+        error: error,
         url: req.originalUrl,
       });
     }

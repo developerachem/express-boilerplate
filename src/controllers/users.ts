@@ -2,6 +2,7 @@ import bcrypt from "bcrypt";
 import { Request, Response } from "express";
 import asyncHandler from "express-async-handler";
 import { User } from "../model/users";
+import { sendMail } from "../utils/mailSend";
 import { userRegistrationSchema } from "../validations/userValidation";
 
 // * Get Users
@@ -74,16 +75,23 @@ export const createUser = asyncHandler(async (req: Request, res: Response) => {
     }
 
     // * Create Has Password using bcrypt
-    const hashedPassword = await bcrypt.hash(
-      value.password,
-      process.env.BCRYPT_SALT_ROUND || 10
-    );
+    const hashedPassword = await bcrypt.hash(value.password, 10);
 
     // * Update the password field with the hashed password
     value.password = hashedPassword;
 
     // * Create a new user using Mongoose
     const user = await User.create(value);
+
+    // * Mail Payload
+    const mailPayload = {
+      to: value.email,
+      subject: "Welcome " + value.name,
+      message:
+        "Lorem ipsum dolor sit amet consectetur adipisicing elit. Laborum est veritatis sit numquam blanditiis magnam quos ex labore ea similique in ipsam a, veniam repellat accusantium",
+    };
+    // * Send Welcome Mail
+    sendMail(mailPayload);
 
     // * Send a 201 response with the created user
     res.status(201).json({

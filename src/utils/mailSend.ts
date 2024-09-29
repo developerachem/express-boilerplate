@@ -6,6 +6,7 @@ interface MailProps {
   message: string;
 }
 export const sendMail = (data: MailProps) => {
+  console.log("Email Send Processing...");
   const { to, subject, message } = data;
   // * Mail Option
   const mailOptions = {

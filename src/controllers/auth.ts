@@ -1,4 +1,4 @@
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import { Request, Response } from "express";
 import expressAsyncHandler from "express-async-handler";
 import jwt from "jsonwebtoken";

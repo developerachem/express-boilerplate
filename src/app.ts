@@ -2,6 +2,7 @@ import express, { Application, Request, Response } from "express";
 
 import cors from "cors";
 import dotenv from "dotenv";
+import { join } from "path";
 import { authRouters } from "./routes/auth";
 import { userRouters } from "./routes/users";
 
@@ -11,6 +12,7 @@ const app: Application = express();
 app.use(express.json());
 app.use(cors());
 dotenv.config();
+app.use(express.static(join(__dirname, "public")));
 
 // * routes
 

@@ -1,4 +1,4 @@
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import { Request, Response } from "express";
 import asyncHandler from "express-async-handler";
 import { User } from "../model/users";
@@ -201,23 +201,8 @@ export const updateUser = asyncHandler(async (req: Request, res: Response) => {
       return;
     }
 
-    // * Validate the user data using Joi
-    const { error, value } = userRegistrationSchema.validate(req.body);
-
-    // * Response Validation Error
-    if (error) {
-      res.status(400).json({
-        message: "Validation Error",
-        success: false,
-        status: 400,
-        errors: error.details,
-        url: req.originalUrl,
-      });
-      return;
-    }
-
     // * Get user by ID from Mongoose
-    const user = await User.findByIdAndUpdate(req.params.id, value, {
+    const user = await User.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
       runValidators: true,
     });

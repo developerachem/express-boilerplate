@@ -4,13 +4,14 @@ interface MailProps {
   to: string;
   subject: string;
   message: string;
+  from?: string;
 }
 export const sendMail = (data: MailProps) => {
   console.log("Email Send Processing...");
   const { to, subject, message } = data;
   // * Mail Option
   const mailOptions = {
-    from: process.env.MY_MAIL,
+    from: data.from ? data.from : process.env.MY_MAIL,
     to: to,
     subject: subject || "Test Subject",
     html: message,
@@ -32,11 +33,15 @@ export const sendMail = (data: MailProps) => {
     },
   });
 
-  transporter.sendMail(mailOptions, (error, info) => {
-    if (error) {
-      console.log(error);
-    } else {
-      console.log("Email sent: " + info.response);
-    }
-  });
+  try {
+    transporter.sendMail(mailOptions, (error, info) => {
+      if (error) {
+        console.log(error);
+      } else {
+        console.log("Email sent successfully: " + info.response);
+      }
+    });
+  } catch (error) {
+    console.log("Catch Email Send Error: ===>", error);
+  }
 };

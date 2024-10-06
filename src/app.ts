@@ -4,6 +4,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import { join } from "path";
 import { authRouters } from "./routes/auth";
+import { mailSender } from "./routes/mail";
 import { userRouters } from "./routes/users";
 
 const app: Application = express();
@@ -26,6 +27,7 @@ const getController = (req: Request, res: Response) => {
 
 app.use("/api/v1/user", userRouters);
 app.use("/api/v1/auth", authRouters);
+app.use("/api/v1/mail", mailSender);
 app.get("/", getController);
 
 export default app;
